@@ -1,0 +1,4 @@
+[submodule "external/OddityEngine"]
+	path = external/OddityEngine
+	url = git@github.com:PAP-R/Oddity-Engine.git
+	branch = rays
