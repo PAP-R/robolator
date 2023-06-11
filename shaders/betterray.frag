@@ -11,6 +11,7 @@ struct bufferobject {
     vec4 color;
     vec4 emission;
     mat4 transform;
+    float roughness;
     uint type;
     uint vertexstart;
     uint vertexcount;
@@ -33,6 +34,7 @@ struct Ray {
     uint count;
     vec4 color;
     vec4 emission;
+    float roughness;
 };
 
 layout(std140, std430, binding = 3) buffer objectbuffer {
@@ -49,11 +51,12 @@ out vec4 color;
 
 uniform float TIME;
 uniform uint bounces;
+uniform uint spread;
 uniform mat4 MVP;
 uniform vec3 CAMERAPOS;
 
 uint pos_to_state(vec3 pos) {
-    return uint(pow((1 + pos.x) * 1000, 2)) * uint(pow((1 + pos.y) * 1000, 2)) * uint(pow((1 + pos.z) * 1000, 2));// + uint(pow((1 + TIME) * 1000, 2));
+    return uint(pow((2 + pos.x) * 1000, 2)) * uint(pow((2 + pos.y) * 1000, 2)) * uint(pow((2 + pos.z) * 1000, 2)) + uint(TIME * 100);// + uint(pow((1 + TIME) * 1000, 2));
 }
 
 float random(inout uint state) {
@@ -81,6 +84,10 @@ vec3 random_hemisphere_direction(vec3 normal, inout uint state) {
     return dir * sign(dot(normal, dir));
 }
 
+vec3 random_direction_ratio(vec3 direction, vec3 normal, inout uint state, float rdir, float rnormal, float rrandom) {
+    return normalize(direction * rdir + normal * rnormal + random_hemisphere_direction(direction, state) * rrandom);
+}
+
 Ray mkray(vec3 pos, vec3 dir, uint count) {
     Ray ray;
     ray.count = count;
@@ -92,44 +99,51 @@ Ray mkray(vec3 pos, vec3 dir, uint count) {
     return ray;
 }
 
-Ray sphere_collision(Ray ray, mat4 transform) {
+Ray sphere_collision(Ray ray, bufferobject object) {
+    mat4 transform = object.transform;
+
     vec3 pos = transform[3].xyz;
     float radius = length(transform[0].xyz);
-    vec3 origin = pos;
-    float len = dot(ray.dir, pos - ray.origin);
-    vec3 c = len * ray.dir + ray.origin;
-    float dstc = distance(pos, c);
-    float sign = -1;
+
+    vec3 poso = pos - ray.origin;
+
+    float len = dot(poso, ray.dir);
+
+    vec3 c = len * ray.dir;
+
+    float dstc = distance(poso, c);
 
     if (dstc <= radius) {
         float dst = sqrt(pow(radius, 2) - pow(dstc, 2));
 
-        if (len <= dst) {
-            ray.hit = false;
-            if (-dst <= len && len < dst) {
-                ray.hit = true;
-                sign = 1;
-            }
-        }
-        else {
+        if (len > -dst + tolerance) {
             ray.hit = true;
+            float sign = 1;
+
+            if (len > dst + tolerance) {
+                sign = -1;
+            }
+
+            ray.len = len + sign * dst;
+            ray.pos = ray.origin + ray.dir * ray.len;
+
+            ray.normal = normalize(ray.pos - pos);
+
+            ray.color = object.color;
+            ray.emission = object.emission;
+            ray.roughness = object.roughness;
         }
-
-        ray.len = len + sign * dst;
-        ray.pos = ray.origin + ray.dir * ray.len;
-
-        ray.normal = -sign * normalize(ray.pos - pos);
     }
 
     return ray;
 }
 
-Ray triangle_collision(Ray ray, mat4 transform, buffervertex v0, buffervertex v1, buffervertex v2) {
+Ray triangle_collision(Ray ray, bufferobject object, buffervertex v0, buffervertex v1, buffervertex v2) {
     ray.hit = false;
 
-    vec3 a = (transform * v0.pos).xyz;
-    vec3 b = (transform * v1.pos).xyz;
-    vec3 c = (transform * v2.pos).xyz;
+    vec3 a = (object.transform * v0.pos).xyz;
+    vec3 b = (object.transform * v1.pos).xyz;
+    vec3 c = (object.transform * v2.pos).xyz;
 
     vec3 edgeab = b - a;
     vec3 edgeac = c - a;
@@ -155,17 +169,21 @@ Ray triangle_collision(Ray ray, mat4 transform, buffervertex v0, buffervertex v1
         ray.pos = hitpos;
         ray.len = t;
         ray.normal = normal;
+
+        ray.color = object.color;
+        ray.emission = object.emission;
+        ray.roughness = object.roughness;
     }
 
     return ray;
 }
 
-Ray mesh_collision(Ray ray, mat4 transform, uint vertexstart, uint vertexcount) {
-    float vertexend = vertexstart + vertexcount - vertexcount % 3;
+Ray mesh_collision(Ray ray, bufferobject object) {
+    float vertexend = object.vertexstart + object.vertexcount - object.vertexcount % 3;
     Ray temp, result = ray;
     result.len = 1./0.;
-    for (uint i = vertexstart; i < vertexend; i += 3) {
-        temp = triangle_collision(ray, transform, vertices[i], vertices[i + 1], vertices[i + 2]);
+    for (uint i = object.vertexstart; i < vertexend; i += 3) {
+        temp = triangle_collision(ray, object, vertices[i], vertices[i + 1], vertices[i + 2]);
         if (temp.hit && temp.len <= result.len) {
             result = temp;
         }
@@ -177,33 +195,27 @@ Ray mesh_collision(Ray ray, mat4 transform, uint vertexstart, uint vertexcount) 
 Ray collision_ray(Ray ray) {
     Ray result = ray;
     Ray temp = ray;
-    uint index;
 
     for (uint i = 0; i < objects.length(); i++) {
         bufferobject object = objects[i];
         switch(object.type) {
             case SPHERE:
-                temp = sphere_collision(ray, object.transform);
+                temp = sphere_collision(ray, object);
                 break;
             case MESH:
-                temp = mesh_collision(ray, object.transform, object.vertexstart, object.vertexcount);
+                temp = mesh_collision(ray, object);
                 break;
         }
         if (temp.hit && temp.len < result.len) {
             result = temp;
-            index = i;
         }
-    }
-
-    if (result.hit) {
-        result.color = objects[index].color;
-        result.emission = objects[index].emission;
     }
 
     return result;
 }
 
-vec4 collision_multi_ray(Ray ray, uint count) {
+vec4 collision_multi_ray(Ray ray, uint count, uint spread) {
+    uint state = pos_to_state(ray.dir);
     vec4 color = vec4(1);
     vec4 emission = vec4(0);
     Ray current = ray;
@@ -223,18 +235,28 @@ vec4 collision_multi_ray(Ray ray, uint count) {
         current = collision_ray(current);
 
         if (current.hit) {
+//            emission = vec4(vec3(current.len > 0 ? 1 : 0), 1);
 //            color *= vec4(current.normal, 1);
 //            color *= vec4(abs(current.normal), 1);
 //            color *= vec4(current.pos, 1);
 //            color *= vec4(abs(current.pos), 1);
             emission += vec4(current.emission.xyz * current.emission.w * color.xyz, current.emission.w);
             color *= current.color;
+
             if (current.count < count) {
-                stack[stack_index] = mkray(current.pos, reflect(current.dir, current.normal), current.count + 1);
-                stack_index = (stack_index + 1);
+                if (current.roughness > 0) {
+                    for (uint i = current.count; i < spread; i++) {
+                        stack[stack_index] = mkray(current.pos, random_direction_ratio(reflect(current.dir, current.normal), current.normal, state, 1. - current.roughness, 0, current.roughness), current.count + 1);
+                        stack_index = (stack_index + 1);
+                    }
+                }
+                else {
+                    stack[stack_index] = mkray(current.pos, reflect(current.dir, current.normal), current.count + 1);
+                    stack_index = (stack_index + 1);
+                }
 
                 if (current.color.w < 1) {
-                    stack[stack_index] = mkray(current.pos, refract(current.dir, current.normal, 1.01), current.count + 1);
+                    stack[stack_index] = mkray(current.pos, refract(current.dir, current.normal, 1.001), current.count + 1);
                     stack_index = (stack_index + 1);
                 }
             }
@@ -245,5 +267,5 @@ vec4 collision_multi_ray(Ray ray, uint count) {
 }
 
 void main() {
-    color = collision_multi_ray(mkray(CAMERAPOS, fragmentpos, 0), bounces);
+    color = collision_multi_ray(mkray(CAMERAPOS, fragmentpos, 0), bounces, spread);
 }
