@@ -1,0 +1,70 @@
+.PROGRAM work4()
+	READY
+
+	PROMPT "Wie viele Zyklen? ", numcyc
+
+
+	SET pos[0] = TRANS(840,-100,100,0,180,0)
+	SET pos[1] = TRANS(1140,-100,100,0,180,0)
+	SET pos[2] = TRANS(1140,100,100,0,180,0)
+	SET pos[3] = TRANS(840,100,100,0,180,0)
+	SET pos[4] = pos[0]
+
+	DRIVE 2, 45, 30
+	BREAK
+	DRIVE 3, 65, 30
+	BREAK
+	DRIVE 5, 70, 30
+	BREAK
+
+
+	FOR c = 1 TO numcyc
+	    TIMER (1) = 0
+	    FOR i = 0 TO 3
+;		SPEED 70
+		ACCEL 50, 20
+		APPROS pos[i], 50	; pos[i] + 5 cm entlang der z achse 
+		BREAK
+;		SPEED 50
+		ACCEL 50, 20
+		MOVES pos[i]		; Zum Punkt bewegen
+		BREAK
+		WAIT.EVENT , 0.2	; Griffzeit
+;		SPEED 50
+		ACCEL 50, 20
+		DEPARTS 50 ; Vom Punkt weg bewegen
+		BREAK
+	    END
+	    TYPE "Zyklus", c, ":", TIMER(1)	; Gebe die vergangene Zeit aus
+	END
+
+	READY
+	RETURN
+.END
+
+.LOCATIONS
+ pos[0]            -1 0 0 0 1 0
+ 0 0 -1 840 -100 100
+ pos[1]            -1 0 0 0 1 0
+ 0 0 -1 1140 -100 100
+ pos[2]            -1 0 0 0 1 0
+ 0 0 -1 1140 100 100
+ pos[3]            -1 0 0 0 1 0
+ 0 0 -1 840 100 100
+ pos[4]            -1 0 0 0 1 0
+ 0 0 -1 840 -100 100
+.END
+
+.REALS
+ c                4
+ i                4
+ numcyc           3
+.END
+
+.DOUBLES
+.END
+
+.STRINGS
+.END
+
+

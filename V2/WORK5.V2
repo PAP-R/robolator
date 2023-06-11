@@ -1,0 +1,62 @@
+.PROGRAM work5()
+	READY
+
+	PROMPT "Shift = 1  oder Trans = 0? ", f
+
+	SET pos[0] = TRANS(840,-100,100,0,180,90)
+
+	IF (f == 1) THEN
+	    SET pos[1] = SHIFT(pos[0] BY 300,0,0)
+	    SET pos[2] = SHIFT(pos[1] BY 0,200,0)
+	    SET pos[3] = SHIFT(pos[2] BY -300,0,0)
+	ELSE
+	    SET pos[1] = pos[0]:TRANS(0,300,0,0,0,0)
+	    SET pos[2] = pos[1]:TRANS(200,0,0,0,0,0)
+	    SET pos[3] = pos[2]:TRANS(0,-300,0,0,0,0)
+	END
+
+	SET pos[4] = pos[0]
+
+	DRIVE 2, 45, 30
+	BREAK
+	DRIVE 3, 65, 30
+	BREAK
+	DRIVE 5, 70, 30
+	BREAK
+
+
+	FOR i = 0 TO 4
+	    MOVES pos[i]
+	    BREAK
+	END
+
+
+	READY
+	RETURN
+.END
+
+.LOCATIONS
+ pos[0]            0 1 0 1 0 0
+ 0 0 -1 840 -100 100
+ pos[1]            0 1 0 1 0 0
+ 0 0 -1 1140 -100 100
+ pos[2]            0 1 0 1 0 0
+ 0 0 -1 1140 100 100
+ pos[3]            0 1 0 1 0 0
+ 0 0 -1 840 100 100
+ pos[4]            0 1 0 1 0 0
+ 0 0 -1 840 -100 100
+.END
+
+.REALS
+ f                0
+ i                5
+.END
+
+.DOUBLES
+.END
+
+.STRINGS
+.END
+
+

@@ -1,0 +1,10 @@
+#ifndef ROBOLATOR_CONTROLLER_H
+#define ROBOLATOR_CONTROLLER_H
+
+
+class Controller {
+
+};
+
+
+#endif //ROBOLATOR_CONTROLLER_H

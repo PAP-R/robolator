@@ -1,0 +1,90 @@
+.PROGRAM work6()
+	SPEED 30
+	READY
+
+	PROMPT "Wie viele Zeilen? ", rows
+	PROMPT "Wie viele Spalten?", columns
+
+	width = 300/columns
+	height = 300/rows
+
+	SET palette = TRANS(840,-100,100,0,180,0)
+	SET pick = TRANS(940,200,100,0,180,0)
+
+	SET posx = palette:TRANS(0,-100,100,0,0,0)
+	SET posy = palette:TRANS(100,0,0,0,0,0)
+
+	SET frame = FRAME(palette,posx,posy,palette)
+
+
+	DRIVE 2, 45, 30
+	BREAK
+	DRIVE 3, 65, 30
+	BREAK
+	DRIVE 5, 70, 30
+	BREAK
+
+;	FOR c = 0 TO columns-1
+;	    FOR r = 0 TO rows-1
+;		SET pos[c*rows+r] = frame:TRANS(height/2+r*height,width/2+c*width,0,0,0,0)
+;	    END
+;	END
+
+	FOR c = 0 TO columns-1
+	    FOR r = 0 TO rows-1
+		APPROS pick, 50		; Fahre Pick-Position an
+		BREAK
+		MOVES pick
+		BREAK
+		WAIT.EVENT , 0.2
+		DEPARTS 50
+		BREAK
+
+		SET pos = frame:TRANS(height/2+r*height,width/2+c*width,0,0,0,0)
+
+		APPROS pos, 50	; Fahre Position auf der Palette an
+		BREAK
+		MOVES pos
+		BREAK
+		WAIT.EVENT , 0.2
+		DEPARTS 50
+		BREAK
+	    END
+	END
+
+
+	READY
+	RETURN
+.END
+
+.LOCATIONS
+ frame             0 -0.707106769 -0.707106769 -0.99999994 0 0
+ 0 0.707106769 -0.707106769 840 -100 100
+ palette           -1 0 0 0 1 0
+ 0 0 -1 840 -100 100
+ pick              -1 0 0 0 1 0
+ 0 0 -1 940 200 100
+ pos               0 -0.707106709 -0.707106709 -0.99999994 0 0
+ 0 0.707106769 -0.707106769 590 -276.776672363 -76.776687622
+ posx              -1 0 0 0 1 0
+ 0 0 -1 840 -200 0
+ posy              -1 0 0 0 1 0
+ 0 0 -1 740 -100 100
+.END
+
+.REALS
+ c                3
+ columns          3
+ height           100
+ r                3
+ rows             3
+ width            100
+.END
+
+.DOUBLES
+.END
+
+.STRINGS
+.END
+
+

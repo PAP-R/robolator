@@ -17,7 +17,7 @@ int main() {
     Robot robo(cube);
     robo.add_part({0, 0, 0, radians(90.0f)});
     robo.add_part({0, 0, 1.1, 0});
-    robo.add_part({radians(90.0f), 0, 1, radians(90.0f)});
+    robo.add_part({0, 0, 1, radians(90.0f)});
     robo.add_part({0, 0, 0, radians(-90.0f)});
     robo.add_part({0, 0, 0, radians(90.0f)});
     robo.add_part({0, 0.4, 0, 0});
